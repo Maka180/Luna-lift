@@ -45,7 +45,11 @@
             <input type="password" id="password" placeholder="Password" required onfocus="turnOnLamp()">
             
             <input type="text" id="recovery-answer" placeholder="Secret Answer (for recovery)" style="display:none;">
-            
+            <div id="remember-box" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; justify-content: flex-start;">
+    <input type="checkbox" id="remember-me" style="width: auto; margin: 0; accent-color: var(--sage);">
+    <label for="remember-me" style="font-size: 0.85rem; color: #888; cursor: pointer;">Remember me</label>
+</div>
+<button type="submit" id="submit-btn" class="btn-main">Enter Space</button>
             <button type="submit" id="submit-btn" class="btn-main">Enter Space</button>
         </form>
 
@@ -65,81 +69,109 @@
 
     <script>
         function toggleLamp() { document.body.classList.toggle('lamp-on'); }
-        function turnOnLamp() { document.body.classList.add('lamp-on'); }
-        
-        let isSignUpMode = false;
+function turnOnLamp() { document.body.classList.add('lamp-on'); }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById('form-title').innerText = isSignUpMode ? "LUNA SIGN UP" : "LUNA LOGIN";
-            document.getElementById('submit-btn').innerText = isSignUpMode ? "Create Account" : "Enter Space";
-            document.getElementById('toggle-text').innerText = isSignUpMode ? "Already have an account? Login" : "New here? Sign Up";
-            document.getElementById('recovery-answer').style.display = isSignUpMode ? "block" : "none";
-            document.getElementById('recovery-box').style.display = "none";
+let isSignUpMode = false;
+
+function toggleAuthMode() {
+    isSignUpMode = !isSignUpMode;
+    document.getElementById('form-title').innerText = isSignUpMode ? "LUNA SIGN UP" : "LUNA LOGIN";
+    document.getElementById('submit-btn').innerText = isSignUpMode ? "Create Account" : "Enter Space";
+    document.getElementById('toggle-text').innerText = isSignUpMode ? "Already have an account? Login" : "New here? Sign Up";
+    document.getElementById('recovery-answer').style.display = isSignUpMode ? "block" : "none";
+    document.getElementById('recovery-box').style.display = "none";
+    document.getElementById('remember-box').style.display = isSignUpMode ? "none" : "flex";
+}
+
+function showRecovery() {
+    document.getElementById('recovery-box').style.display = "block";
+    turnOnLamp();
+}
+
+function processRecovery() {
+    const user = document.getElementById('username').value.trim();
+    const ans = document.getElementById('check-answer').value.trim();
+    const newPass = document.getElementById('new-password').value.trim();
+    if (!user || !ans || !newPass) return alert("Please fill in all recovery fields!");
+
+    let users = JSON.parse(localStorage.getItem('luna_users')) || {};
+    let recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
+
+    if (recoveries[user] && recoveries[user].toLowerCase() === ans.toLowerCase()) {
+        users[user] = newPass;
+        localStorage.setItem('luna_users', JSON.stringify(users));
+        localStorage.setItem('luna_logged_in', 'true');
+        localStorage.setItem('lunaUser', user);
+        alert("Password updated! Heading to your space... ✨");
+        window.location.href = 'index.html';
+    } else {
+        alert("Incorrect answer or username. 🌙");
+    }
+}
+
+document.getElementById('auth-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value.trim();
+    const ans = document.getElementById('recovery-answer').value.trim();
+    const remember = document.getElementById('remember-me').checked;
+
+    let users = {};
+    try {
+        users = JSON.parse(localStorage.getItem('luna_users')) || {};
+    } catch { users = {}; }
+
+    let recoveries = {};
+    try {
+        recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
+    } catch { recoveries = {}; }
+
+    if (isSignUpMode) {
+        if (!user || !pass) return alert("Please fill in all fields!");
+        if (users[user]) return alert("Username already taken! ✨");
+        if (!ans) return alert("Please provide a secret answer for recovery!");
+
+        users[user] = pass;
+        recoveries[user] = ans;
+        localStorage.setItem('luna_users', JSON.stringify(users));
+        localStorage.setItem('luna_recoveries', JSON.stringify(recoveries));
+
+        alert("Account created! Now please login. 💪");
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('recovery-answer').value = '';
+        toggleAuthMode();
+    } else {
+        if (!users[user]) return alert("Username not found. 🌙");
+        if (users[user] !== pass) return alert("Wrong password. 🌙");
+
+        localStorage.setItem('luna_logged_in', 'true');
+        localStorage.setItem('lunaUser', user);
+
+        // Remember Me — save credentials
+        if (remember) {
+            localStorage.setItem('luna_remembered_user', user);
+            localStorage.setItem('luna_remembered_pass', pass);
+        } else {
+            localStorage.removeItem('luna_remembered_user');
+            localStorage.removeItem('luna_remembered_pass');
         }
 
-        function showRecovery() {
-            document.getElementById('recovery-box').style.display = "block";
-            turnOnLamp();
-        }
+        window.location.href = 'index.html';
+    }
+});
 
-        // RECOVERY LOGIC (NO DATA LOSS)
-       function processRecovery() {
-            const user = document.getElementById('username').value.trim();
-            const ans = document.getElementById('check-answer').value.trim();
-            const newPass = document.getElementById('new-password').value.trim();
-            
-            if (!user || !ans || !newPass) return alert("Please fill in all recovery fields!");
-
-            let users = JSON.parse(localStorage.getItem('luna_users')) || {};
-            let recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
-
-            if (recoveries[user] && recoveries[user].toLowerCase() === ans.toLowerCase()) {
-                users[user] = newPass; 
-                localStorage.setItem('luna_users', JSON.stringify(users));
-                
-                // THE FIX: Automatically log them in after recovery so they don't have to re-type
-                localStorage.setItem('luna_logged_in', 'true');
-                localStorage.setItem('lunaUser', user);
-                
-                alert("Password updated! Heading to your space... ✨");
-                window.location.href = 'index.html'; // Go straight to welcome page
-            } else {
-                alert("Incorrect answer or username. 🌙");
-            }
-        }
-
-        document.getElementById('auth-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const user = document.getElementById('username').value.trim();
-            const pass = document.getElementById('password').value.trim();
-            const ans = document.getElementById('recovery-answer').value.trim();
-            
-            let users = JSON.parse(localStorage.getItem('luna_users')) || {};
-            let recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
-
-            if (isSignUpMode) {
-                if (users[user]) return alert("Username exists!");
-                if (!ans) return alert("Please provide a secret answer for recovery!");
-                
-                users[user] = pass;
-                recoveries[user] = ans; // Store recovery answer
-                
-                localStorage.setItem('luna_users', JSON.stringify(users));
-                localStorage.setItem('luna_recoveries', JSON.stringify(recoveries));
-                
-                alert("Account created! Remember your secret answer. 💪");
-                toggleAuthMode();
-            } else {
-                if (users[user] && users[user] === pass) {
-                    localStorage.setItem('luna_logged_in', 'true');
-                    localStorage.setItem('lunaUser', user);
-                    window.location.href = 'index.html'; 
-                } else {
-                    alert("Wrong details! 🌙");
-                }
-            }
-        });
+// Auto-fill remembered credentials on page load
+window.addEventListener('DOMContentLoaded', () => {
+    const rememberedUser = localStorage.getItem('luna_remembered_user');
+    const rememberedPass = localStorage.getItem('luna_remembered_pass');
+    if (rememberedUser && rememberedPass) {
+        document.getElementById('username').value = rememberedUser;
+        document.getElementById('password').value = rememberedPass;
+        document.getElementById('remember-me').checked = true;
+        turnOnLamp();
+    }
+});
     </script>
 </body>
 </html>
