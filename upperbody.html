@@ -405,48 +405,99 @@
             document.getElementById('ready-info').innerText = `${currentWorkout.exercises.length} Exercises`;
         }
 
-        function beginTracking() {
-            document.getElementById('ready-screen').style.display = 'none';
-            document.getElementById('active-tracker').style.display = 'block';
-            currentStep = 0; sessionSeconds = 0; updatePlayerUI();
-            sessionInterval = setInterval(() => {
-                sessionSeconds++;
-                const m = Math.floor(sessionSeconds / 60).toString().padStart(2, '0');
-                const s = (sessionSeconds % 60).toString().padStart(2, '0');
-                document.getElementById('player-timer').innerText = `${m}:${s}`;
-            }, 1000);
-        }
+        let sessionSets = {};
+
+function beginTracking() {
+    document.getElementById('ready-screen').style.display = 'none';
+    document.getElementById('active-tracker').style.display = 'block';
+    currentStep = 0; sessionSeconds = 0; sessionSets = {};
+    updatePlayerUI();
+    sessionInterval = setInterval(() => {
+        sessionSeconds++;
+        const m = Math.floor(sessionSeconds / 60).toString().padStart(2, '0');
+        const s = (sessionSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('player-timer').innerText = `${m}:${s}`;
+    }, 1000);
+}
 
         function updatePlayerUI() {
-            const ex = currentWorkout.exercises[currentStep];
-            document.getElementById('player-ex-name').innerText = ex.name.toUpperCase();
-            const exData = allExercises.find(i => i.id === ex.id) || {};
-            document.getElementById('player-gif').src = exData.gifUrl || '';
-            document.getElementById('player-progress').innerText = `${currentStep + 1} / ${currentWorkout.exercises.length}`;
-        }
+    const ex = currentWorkout.exercises[currentStep];
+    document.getElementById('player-ex-name').innerText = ex.name.toUpperCase();
+    const exData = allExercises.find(i => i.id === ex.id) || {};
+    document.getElementById('player-gif').src = exData.gifUrl || '';
+    document.getElementById('player-progress').innerText = `${currentStep + 1} / ${currentWorkout.exercises.length}`;
+    document.getElementById('input-reps').value = 10;
+    document.getElementById('input-weight').value = 0;
+    if (!sessionSets[ex.id]) sessionSets[ex.id] = { name: ex.name, sets: [] };
+    renderSetsLog(ex.id);
+}
+function logSet() {
+    const ex = currentWorkout.exercises[currentStep];
+    const reps = parseInt(document.getElementById('input-reps').value) || 0;
+    const weight = parseFloat(document.getElementById('input-weight').value) || 0;
+    if (reps === 0) return alert("Please enter at least 1 rep!");
+    if (!sessionSets[ex.id]) sessionSets[ex.id] = { name: ex.name, sets: [] };
+    sessionSets[ex.id].sets.push({ reps, weight });
+    renderSetsLog(ex.id);
+}
+function renderSetsLog(exId) {
+    const log = document.getElementById('sets-log');
+    const data = sessionSets[exId];
+    if (!data || data.sets.length === 0) { log.innerHTML = ''; return; }
+    let exTotal = 0;
+    data.sets.forEach(s => exTotal += s.reps * s.weight);
+    log.innerHTML = `
+        ${data.sets.map((s, i) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:white; border-radius:8px; margin-top:5px; font-size:0.8rem; border:1px solid #eee;">
+                <span style="color:#8A9A5B; font-weight:bold;">Set ${i + 1}</span>
+                <span>${s.reps} reps</span>
+                <span>${s.weight > 0 ? s.weight + ' kg' : 'Bodyweight'}</span>
+                <button onclick="deleteSet('${exId}', ${i})" style="color:#ff6b6b; border:none; background:none; cursor:pointer;">✕</button>
+            </div>
+        `).join('')}
+        <div style="text-align:right; font-size:0.75rem; color:#8A9A5B; font-weight:bold; margin-top:6px;">
+            Exercise volume: ${exTotal > 0 ? exTotal + ' kg' : 'Bodyweight only'}
+        </div>`;
+}
+function deleteSet(exId, index) {
+    if (sessionSets[exId]) {
+        sessionSets[exId].sets.splice(index, 1);
+        renderSetsLog(exId);
+    }
+}
 
-        function nextStep() {
-            if (currentStep < currentWorkout.exercises.length - 1) { currentStep++; updatePlayerUI(); }
-            else { logFinalStats(); alert("Workout Complete! Stats saved."); closeWorkout(true); }
-        }
+       function nextStep() {
+    if (currentStep < currentWorkout.exercises.length - 1) { currentStep++; updatePlayerUI(); }
+    else { logFinalStats(); alert("Workout Complete! Stats saved. 💪"); closeWorkout(true); }
+}
 
-        function logFinalStats() {
-            let saved = JSON.parse(localStorage.getItem(KEY_ROUTINES)) || [];
-            let idx = saved.findIndex(r => r.id === currentWorkout.id);
-            if (idx !== -1) {
-                saved[idx].lastStats = { date: new Date().toLocaleDateString(), time: document.getElementById('player-timer').innerText };
-                localStorage.setItem(KEY_ROUTINES, JSON.stringify(saved));
-            }
-        }
+       function logFinalStats() {
+    let saved = JSON.parse(localStorage.getItem(KEY_ROUTINES)) || [];
+    let idx = saved.findIndex(r => r.id === currentWorkout.id);
+    if (idx !== -1) {
+        let totalVolume = 0, totalReps = 0;
+        const exerciseBreakdown = Object.values(sessionSets).map(ex => {
+            let exVolume = 0, exReps = 0;
+            ex.sets.forEach(s => { exReps += s.reps; exVolume += s.reps * s.weight; });
+            totalReps += exReps; totalVolume += exVolume;
+            return { name: ex.name, sets: ex.sets, totalReps: exReps, totalVolume: exVolume };
+        });
+        saved[idx].lastStats = {
+            date: new Date().toLocaleDateString(),
+            time: document.getElementById('player-timer').innerText,
+            totalReps, totalVolume: totalVolume.toFixed(1), exerciseBreakdown
+        };
+        localStorage.setItem(KEY_ROUTINES, JSON.stringify(saved));
+    }
+}
 
-        function closeWorkout(skip = false) {
-            if (skip || confirm("End Session?")) {
-                document.getElementById('workout-player').style.display = 'none';
-                clearInterval(sessionInterval);
-                document.getElementById('player-timer').innerText = "00:00";
-            }
-        }
-
+       function closeWorkout(skip = false) {
+    if (skip || confirm("End Session?")) {
+        document.getElementById('workout-player').style.display = 'none';
+        clearInterval(sessionInterval);
+        document.getElementById('player-timer').innerText = "00:00";
+    }
+}
         function prevStep() { if (currentStep > 0) { currentStep--; updatePlayerUI(); } }
 
         // ── DIARY ──
