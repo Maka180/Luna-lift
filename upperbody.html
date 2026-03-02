@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna Lift | Upper Body Dashboard</title>
+    <style>
+        :root { --sage: #8A9A5B; --blush: #FADADD; --cream: #FAF9F6; --white: #ffffff; --text: #4A4A4A; }
+        body { background-color: var(--cream); margin: 0; font-family: 'Segoe UI', sans-serif; color: var(--text); overflow-x: hidden; }
+
+        .app-container { display: flex; min-height: 100vh; width: 100%; }
+        .main-content { flex: 1; padding: 40px; box-sizing: border-box; }
+
+        .builder-sidebar { 
+            width: 350px; background: var(--white); border-left: 1px solid #eee; 
+            display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+        }
+
+        .back-link { background: none; border: none; color: var(--sage); font-weight: bold; cursor: pointer; padding: 0; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; font-size: 1rem; }
+        
+        .exercise-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; margin-top: 30px; }
+        .exercise-card { background: var(--white); border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); text-align: center; border: 1px solid #f0f0f0; transition: transform 0.2s; position: relative; }
+        .exercise-card img { width: 100%; border-radius: 12px; margin-top: 10px; object-fit: cover; }
+
+        .sidebar-header { background: var(--sage); color: white; padding: 20px; text-align: center; }
+        .routine-items { flex: 1; padding: 20px; overflow-y: auto; list-style: none; margin: 0; }
+        .routine-items li { background: #f9f9f9; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border: 1px solid #eee; }
+
+        .btn-add { background: var(--blush); color: var(--sage); border: none; padding: 12px; border-radius: 25px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .tab-btn { padding: 10px 20px; border-radius: 20px; border: none; cursor: pointer; background: #eee; font-weight: bold; color: #666; white-space: nowrap; }
+        .tab-btn.active { background: var(--sage); color: white; }
+        
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box; font-family: inherit; }
+
+        #routine-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:3000; align-items:center; justify-content:center; backdrop-filter: blur(4px); }
+        .modal-content { background:white; padding:30px; border-radius:25px; width:90%; max-width:400px; text-align:center; }
+        #workout-player { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; overflow-y: auto; }
+
+        @media (max-width: 1100px) { 
+            .app-container { flex-direction: column; } 
+            .builder-sidebar { width: 100%; height: auto; position: static; display: none; } 
+            .tab-btn { font-size: 0.8rem; padding: 8px 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <main class="main-content">
+            <header>
+                <button class="back-link" onclick="goBack()">← Back to Categories</button>
+                <h1 style="color: var(--sage); font-family: serif; font-size: 2.5rem; margin: 0;">Luna Lift</h1>
+                <div style="display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 5px;">
+                    <button id="tab-all" class="tab-btn active" onclick="toggleView('all')">All Exercises</button>
+                    <button id="tab-custom" class="tab-btn" onclick="toggleView('custom')">Create Move</button>
+                    <button id="tab-saved" class="tab-btn" onclick="toggleView('saved')">My Workouts</button>
+                    <button id="tab-diary" class="tab-btn" onclick="toggleView('diary')">Progress Diary</button>
+                </div>
+            </header>
+
+            <div id="view-all">
+                <input type="text" id="exercise-search" placeholder="🔍 Search exercises...">
+                <div id="exercise-container" class="exercise-grid"></div>
+                <div id="load-more-container" style="text-align: center; margin: 40px 0; padding-bottom: 60px;">
+                    <p id="exercise-counter" style="color: var(--sage); font-weight: bold; margin-bottom: 15px; font-size: 0.9rem;"></p>
+                    <div style="display: flex; justify-content: center; gap: 15px;">
+                        <button id="load-less-btn" class="btn-add" style="display: none; width: 160px; background-color: #ccc; color: white; margin: 0;">Load Less -</button>
+                        <button id="load-more-btn" class="btn-add" style="display: none; width: 160px; background-color: var(--sage); color: white; margin: 0;">Load More +</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-custom" style="display: none; max-width: 500px; margin: 0 auto;">
+                <div class="exercise-card">
+                    <h3 style="color: var(--sage);">Add New Move</h3>
+                    <input type="text" id="custom-name" placeholder="Exercise Name">
+                    <input type="text" id="custom-equipment" placeholder="Equipment">
+                    <input type="text" id="custom-gif" placeholder="Image URL">
+                    <button id="add-custom-btn" class="btn-add" style="background: var(--sage); color: white;">Save to Library</button>
+                </div>
+            </div>
+
+            <div id="view-saved" style="display: none;">
+                <div id="routines-gallery" class="exercise-grid"></div>
+            </div>
+
+            <div id="view-diary" style="display: none;">
+                <div class="exercise-card" style="max-width: 500px; margin: 0 auto 30px;">
+                    <h3 style="color: var(--sage);">Monthly Progress Log</h3>
+                    <input type="month" id="diary-month">
+                    <input type="text" id="diary-weight" placeholder="Weight (e.g. 65kg)">
+                    <textarea id="diary-notes" placeholder="Notes on progress, energy, or goals..."></textarea>
+                    <label style="display:block; text-align:left; font-size:0.8rem; margin-bottom:5px; color:#666;">Progress Photo:</label>
+                    <input type="file" id="diary-photo" accept="image/*">
+                    <button id="save-diary-btn" class="btn-add" style="background: var(--sage); color: white;">Save Monthly Entry</button>
+                </div>
+                <div id="diary-gallery" class="exercise-grid"></div>
+            </div>
+        </main>
+
+        <aside class="builder-sidebar" id="main-sidebar">
+            <div class="sidebar-header">
+                <h3 style="margin: 0;">Routine Builder</h3>
+                <small id="item-count">0 added</small>
+            </div>
+            <ul id="routine-list" class="routine-items">
+                <p style="text-align: center; color: #ccc; margin-top: 50px;">Add moves to build a routine.</p>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="playlist-section" style="padding: 10px; border-top: 1px solid #eee; margin-top: 10px;">
+                    <p style="font-size: 0.75rem; color: #8A9A5B; font-weight: bold; margin-bottom: 5px;">ADD PLAYLIST LINK</p>
+                    <input type="text" id="playlist-link" placeholder="Paste Spotify or YouTube link..." 
+                           style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ddd; font-size: 0.85rem; box-sizing: border-box;">
+                </div>
+                <input type="text" id="routine-name" class="routine-input" placeholder="Routine Name" style="width: 100%; padding: 10px; margin-top:10px; border-radius:10px; border:1px solid #ddd;">
+                <button class="save-btn" onclick="saveRoutineWithMusic()" style="width: 100%; padding: 15px; background-color: #8A9A5B; color: white; border: none; border-radius: 10px; margin-top: 10px; cursor: pointer;">SAVE ROUTINE</button>
+                <button id="clear-builder-btn" style="width:100%; border:none; background:none; color:#ff6b6b; cursor:pointer; margin-top:10px; font-weight:bold;">Clear Builder</button>
+            </div>
+        </aside>
+    </div>
+
+    <div id="routine-modal">
+        <div class="modal-content">
+            <h3 style="color:var(--sage);">Add To...</h3>
+            <div id="modal-choices" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; max-height:300px; overflow-y:auto;"></div>
+            <button onclick="closeRoutineModal()" style="background:#eee; border:none; padding:12px; border-radius:25px; cursor:pointer; width:100%;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="workout-player">
+        <div style="max-width: 600px; margin: 0 auto; padding: 40px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <button onclick="closeWorkout()" style="background: #eee; border: none; padding: 10px 20px; border-radius: 15px; cursor: pointer;">✕ End Session</button>
+                <div id="player-timer" style="font-family: monospace; font-size: 1.5rem; color: var(--sage); font-weight: bold;">00:00</div>
+            </div>
+            <div id="ready-screen" style="text-align: center;">
+                <h1 id="ready-name" style="color: var(--sage); font-family: serif;"></h1>
+                <p id="ready-info" style="margin-bottom: 30px;"></p>
+                <button onclick="beginTracking()" class="btn-add" style="font-size: 1.2rem; background: var(--sage); color: white; padding: 20px;">START 💪</button>
+            </div>
+        <div id="active-tracker" style="display: none; text-align: center;">
+    <p id="player-progress" style="color: #999; font-weight: bold;"></p>
+    <div class="exercise-card">
+        <h2 id="player-ex-name" style="color: var(--sage);"></h2>
+        <img id="player-gif" src="" style="max-height:200px; object-fit:contain;">
+
+        <div style="margin-top: 15px; background: #f9f9f9; border-radius: 15px; padding: 15px;">
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;">
+                <div>
+                    <label style="font-size: 0.75rem; color: #8A9A5B; font-weight: bold; display: block; margin-bottom: 4px;">REPS</label>
+                    <input type="number" id="input-reps" min="0" value="10"
+                        style="width: 75px; padding: 10px; border-radius: 10px; border: 1px solid #ddd; text-align: center; font-size: 1.1rem; font-weight: bold;">
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; color: #8A9A5B; font-weight: bold; display: block; margin-bottom: 4px;">WEIGHT (kg)</label>
+                    <input type="number" id="input-weight" min="0" value="0"
+                        style="width: 75px; padding: 10px; border-radius: 10px; border: 1px solid #ddd; text-align: center; font-size: 1.1rem; font-weight: bold;">
+                </div>
+            </div>
+            <button onclick="logSet()" style="background: var(--sage); color: white; border: none; padding: 10px 25px; border-radius: 20px; font-weight: bold; cursor: pointer; width: 100%;">
+                ✅ Log Set
+            </button>
+            <div id="sets-log" style="margin-top: 10px; max-height: 150px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px;">
+        <button onclick="prevStep()" class="tab-btn">←</button>
+        <button onclick="nextStep()" class="tab-btn" style="background: var(--sage); color: white;">Next / Finish</button>
+    </div>
+</div>
+        </div>
+    </div>
+
+    <script>
+        // ── CONFIG FOR THIS PAGE ──
+        const PAGE_MUSCLES = ['biceps', 'triceps', 'chest', 'shoulders', 'lats', 'traps'];
+        const PAGE_EMOJI = '💪';
+        const API_NINJAS_KEY = '5OSwks4t27SenbpSZvVKMFfOK92om3GXbDFoKRlK';
+
+        // ── NAVIGATION & STATE ──
+        const currentUser = localStorage.getItem('lunaUser') || 'guest';
+        const KEY_ROUTINES = `lunaSavedRoutines_upperbody_${currentUser}`;
+        const KEY_DIARY = `lunaDiary_upperbody_${currentUser}`;
+        const KEY_CUSTOM = `lunaCustomExercises_upperbody_${currentUser}`;
+
+        let allExercises = [], filteredExercises = [], activeRoutine = [];
+        let currentIndex = 10;
+        const step = 10;
+        let currentWorkout = null, currentStep = 0, sessionSeconds = 0, sessionInterval = null;
+        let pendingExercise = null;
+
+        function goBack() { window.location.href = 'workouts.html'; }
+
+        // ── TAB TOGGLE ──
+        function toggleView(view) {
+            const views = ['view-all', 'view-custom', 'view-saved', 'view-diary'];
+            views.forEach(v => {
+                const el = document.getElementById(v);
+                if (el) el.style.display = (v === `view-${view}`) ? 'block' : 'none';
+            });
+            const sidebar = document.getElementById('main-sidebar');
+            if (sidebar) sidebar.style.display = (view === 'all') ? 'flex' : 'none';
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const activeTab = document.getElementById(`tab-${view}`);
+            if (activeTab) activeTab.classList.add('active');
+            if (view === 'saved') displaySavedRoutines();
+            if (view === 'diary') displayDiary();
+        }
+
+        // ── API & RENDER ──
+        async function getExercises() {
+            try {
+                const custom = JSON.parse(localStorage.getItem(KEY_CUSTOM)) || [];
+                let results = [];
+
+                for (const muscle of PAGE_MUSCLES) {
+                    const res = await fetch(`https://api.api-ninjas.com/v1/exercises?muscle=${muscle}&limit=20`, {
+                        headers: { 'X-Api-Key': API_NINJAS_KEY }
+                    });
+                    const data = await res.json();
+                    results = [...results, ...data];
+                }
+
+                // Remove duplicates by name
+                const seen = new Set();
+                results = results.filter(ex => {
+                    if (seen.has(ex.name)) return false;
+                    seen.add(ex.name);
+                    return true;
+                });
+
+                allExercises = [...custom, ...results.map((ex, i) => ({
+                    id: 'api-' + i,
+                    name: ex.name,
+                    equipment: ex.type,
+                    difficulty: ex.difficulty,
+                    instructions: ex.instructions,
+                    gifUrl: null
+                }))];
+
+                filteredExercises = [...allExercises];
+                renderBatch(true);
+            } catch (e) {
+                console.error("API Error:", e);
+            }
+        }
+
+        function renderBatch(isNewSearch = false) {
+            const container = document.getElementById('exercise-container');
+            const loadMoreBtn = document.getElementById('load-more-btn');
+            const loadLessBtn = document.getElementById('load-less-btn');
+            const counterLabel = document.getElementById('exercise-counter');
+
+            if (!container) return;
+            if (isNewSearch) currentIndex = 10;
+
+            container.innerHTML = '';
+            const currentView = filteredExercises.slice(0, currentIndex);
+
+            currentView.forEach(ex => {
+                const div = document.createElement('div');
+                div.className = 'exercise-card';
+                div.innerHTML = `
+                    <h4>${ex.name.toUpperCase()}</h4>
+                    <div style="min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8f4f0, #fce4ec); border-radius: 12px; margin: 10px 0; padding: 15px;">
+                        ${ex.gifUrl 
+                            ? `<img src="${ex.gifUrl}" alt="${ex.name}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=''" style="max-width:100%; border-radius:12px;">`
+                            : `<div style="font-size: 2.5rem; margin-bottom: 8px;">${PAGE_EMOJI}</div>`
+                        }
+                        <div style="font-size: 0.75rem; color: #8A9A5B; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+                            ${ex.equipment || 'Bodyweight'}
+                        </div>
+                        <div style="font-size: 0.7rem; color: #bbb; margin-top: 4px; text-transform: capitalize;">
+                            ${ex.difficulty || ''}
+                        </div>
+                    </div>
+                    ${ex.instructions ? `
+                    <details style="margin: 8px 0; font-size: 0.78rem; color: #666; cursor: pointer;">
+                        <summary style="color: #8A9A5B; font-weight: bold; cursor: pointer; list-style: none; text-align: center;">
+                            📋 How to do it
+                        </summary>
+                        <p style="margin-top: 8px; line-height: 1.5; padding: 0 5px;">${ex.instructions}</p>
+                    </details>` : ''}
+                    <button class="btn-add" onclick="openRoutineModal('${ex.id}', '${ex.name.replace(/'/g, "\\'")}')">+ Add to Routine</button>
+                `;
+                container.appendChild(div);
+            });
+
+            if (counterLabel) {
+                counterLabel.innerText = filteredExercises.length > 0
+                    ? `Showing ${currentView.length} of ${filteredExercises.length} upper body exercises`
+                    : "No exercises found.";
+            }
+
+            if (loadMoreBtn) {
+                loadMoreBtn.style.display = currentIndex < filteredExercises.length ? 'inline-block' : 'none';
+                loadMoreBtn.onclick = () => { currentIndex += step; renderBatch(false); };
+            }
+            if (loadLessBtn) {
+                loadLessBtn.style.display = currentIndex > 10 ? 'inline-block' : 'none';
+                loadLessBtn.onclick = () => { currentIndex = Math.max(10, currentIndex - step); renderBatch(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+            }
+        }
+
+        // ── MODAL ──
+        function openRoutineModal(id, name) {
+            pendingExercise = { id, name };
+            const modal = document.getElementById('routine-modal'), choices = document.getElementById('modal-choices');
+            const saved = JSON.parse(localStorage.getItem(KEY_ROUTINES)) || [];
+            choices.innerHTML = `<button class="btn-add" style="margin:0;" onclick="confirmAddToActive()">Current Builder Sidebar</button>`;
+            saved.forEach(r => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-add';
+                btn.style.cssText = "margin:0; background:var(--sage); color:white;";
+                btn.innerText = `Add to: ${r.name}`;
+                btn.onclick = () => injectIntoExisting(r.id);
+                choices.appendChild(btn);
+            });
+            modal.style.display = 'flex';
+        }
+
+        function closeRoutineModal() { document.getElementById('routine-modal').style.display = 'none'; pendingExercise = null; }
+
+        function confirmAddToActive() {
+            if (!activeRoutine.find(i => i.id === pendingExercise.id)) { activeRoutine.push(pendingExercise); updateRoutineUI(); }
+            closeRoutineModal();
+        }
+
+        function injectIntoExisting(routineId) {
+            let saved = JSON.parse(localStorage.getItem(KEY_ROUTINES)) || [];
+            let rIdx = saved.findIndex(r => r.id === routineId);
+            if (rIdx !== -1 && !saved[rIdx].exercises.find(ex => ex.id === pendingExercise.id)) {
+                saved[rIdx].exercises.push(pendingExercise);
+                localStorage.setItem(KEY_ROUTINES, JSON.stringify(saved));
+            }
+            closeRoutineModal();
+        }
+
+        // ── BUILDER ──
+        function updateRoutineUI() {
+            const list = document.getElementById('routine-list');
+            const countLabel = document.getElementById('item-count');
+            if (countLabel) countLabel.innerText = `${activeRoutine.length} added`;
+            if (activeRoutine.length === 0) {
+                list.innerHTML = `<p style="text-align: center; color: #ccc; margin-top: 50px;">Add moves to build a routine.</p>`;
+            } else {
+                list.innerHTML = activeRoutine.map((item, i) => `
+                    <li>${item.name.toUpperCase()} <button onclick="removeFromRoutine(${i})" style="color:red; border:none; background:none; cursor:pointer;">✕</button></li>
+                `).join('');
+            }
+        }
+
+        function removeFromRoutine(i) { activeRoutine.splice(i, 1); updateRoutineUI(); }
+
+        function saveRoutineWithMusic() {
+            const name = document.getElementById('routine-name').value;
+            const link = document.getElementById('playlist-link').value;
+            if (!name || activeRoutine.length === 0) { alert("Please add moves and a routine name! ✨"); return; }
+            const saved = JSON.parse(localStorage.getItem(KEY_ROUTINES)) || [];
+            saved.push({ id: Date.now(), name, music: link, exercises: [...activeRoutine], lastStats: null });
+            localStorage.setItem(KEY_ROUTINES, JSON.stringify(saved));
+            alert("Routine Saved! 💪");
+            activeRoutine = [];
+            document.getElementById('routine-name').value = '';
+            document.getElementById('playlist-link').value = '';
+            updateRoutineUI();
+            displaySavedRoutines();
+            toggleView('saved');
+        }
+
+        function displaySavedRoutines() {
+            const gallery = document.getElementById('routines-gallery');
+            const saved = JSON.parse(localStorage.getItem(KEY_ROUTINES)) || [];
+            if (saved.length === 0) { gallery.innerHTML = '<p style="text-align:center; color:#ccc; grid-column: 1/-1;">No saved workouts yet.</p>'; return; }
+            gallery.innerHTML = saved.map(r => {
+                const stats = r.lastStats ? `<div style="font-size:0.7rem; color:#888; margin-top:10px; border-top:1px dashed #ddd; padding-top:5px;">📅 ${r.lastStats.date} | ⏱️ ${r.lastStats.time}</div>` : `<div style="font-size:0.7rem; color:#ccc; margin-top:10px;">No history yet</div>`;
+                const musicBtn = r.music ? `<button onclick="event.stopPropagation(); window.open('${r.music}', '_blank')" style="background:#FADADD; border:none; border-radius:10px; padding:5px 10px; font-size:0.7rem; cursor:pointer; margin-right:5px; color:#8A9A5B; font-weight:bold;">🎵 Play Music</button>` : '';
+                return `
+                    <div class="exercise-card" onclick="startWorkout(${r.id})" style="cursor:pointer;">
+                        <h4 style="color:var(--sage); margin:0;">${r.name.toUpperCase()}</h4>
+                        <p style="margin:5px 0; font-size:0.8rem;">${r.exercises.length} Exercises</p>
+                        ${stats}
+                        <div style="margin-top:10px;">${musicBtn}<button onclick="event.stopPropagation(); deleteRoutine(${r.id})" style="color:#ff6b6b; border:none; background:none; font-size:0.7rem; cursor:pointer;">Delete</button></div>
+                    </div>`;
+            }).join('');
+        }
+
+        function deleteRoutine(id) {
+            if (confirm("Delete this routine?")) {
+                let s = (JSON.parse(localStorage.getItem(KEY_ROUTINES)) || []).filter(r => r.id !== id);
+                localStorage.setItem(KEY_ROUTINES, JSON.stringify(s));
+                displaySavedRoutines();
+            }
+        }
+
+        // ── WORKOUT PLAYER ──
+        function startWorkout(id) {
+            const saved = JSON.parse(localStorage.getItem(KEY_ROUTINES));
+            currentWorkout = saved.find(r => r.id === id);
+            document.getElementById('workout-player').style.display = 'block';
+            document.getElementById('ready-screen').style.display = 'block';
+            document.getElementById('active-tracker').style.display = 'none';
+            document.getElementById('ready-name').innerText = currentWorkout.name;
+            document.getElementById('ready-info').innerText = `${currentWorkout.exercises.length} Exercises`;
+        }
+
+        function beginTracking() {
+            document.getElementById('ready-screen').style.display = 'none';
+            document.getElementById('active-tracker').style.display = 'block';
+            currentStep = 0; sessionSeconds = 0; updatePlayerUI();
+            sessionInterval = setInterval(() => {
+                sessionSeconds++;
+                const m = Math.floor(sessionSeconds / 60).toString().padStart(2, '0');
+                const s = (sessionSeconds % 60).toString().padStart(2, '0');
+                document.getElementById('player-timer').innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function updatePlayerUI() {
+            const ex = currentWorkout.exercises[currentStep];
+            document.getElementById('player-ex-name').innerText = ex.name.toUpperCase();
+            const exData = allExercises.find(i => i.id === ex.id) || {};
+            document.getElementById('player-gif').src = exData.gifUrl || '';
+            document.getElementById('player-progress').innerText = `${currentStep + 1} / ${currentWorkout.exercises.length}`;
+        }
+
+        function nextStep() {
+            if (currentStep < currentWorkout.exercises.length - 1) { currentStep++; updatePlayerUI(); }
+            else { logFinalStats(); alert("Workout Complete! Stats saved."); closeWorkout(true); }
+        }
+
+        function logFinalStats() {
+            let saved = JSON.parse(localStorage.getItem(KEY_ROUTINES)) || [];
+            let idx = saved.findIndex(r => r.id === currentWorkout.id);
+            if (idx !== -1) {
+                saved[idx].lastStats = { date: new Date().toLocaleDateString(), time: document.getElementById('player-timer').innerText };
+                localStorage.setItem(KEY_ROUTINES, JSON.stringify(saved));
+            }
+        }
+
+        function closeWorkout(skip = false) {
+            if (skip || confirm("End Session?")) {
+                document.getElementById('workout-player').style.display = 'none';
+                clearInterval(sessionInterval);
+                document.getElementById('player-timer').innerText = "00:00";
+            }
+        }
+
+        function prevStep() { if (currentStep > 0) { currentStep--; updatePlayerUI(); } }
+
+        // ── DIARY ──
+        async function saveDiaryEntry() {
+            const month = document.getElementById('diary-month').value;
+            const photoFile = document.getElementById('diary-photo').files[0];
+            if (!month) return alert("Select a month!");
+            let imageData = "";
+            if (photoFile) imageData = await toBase64(photoFile);
+            const entry = { id: Date.now(), month, weight: document.getElementById('diary-weight').value, notes: document.getElementById('diary-notes').value, image: imageData };
+            const diary = JSON.parse(localStorage.getItem(KEY_DIARY)) || [];
+            diary.push(entry);
+            diary.sort((a, b) => new Date(b.month) - new Date(a.month));
+            localStorage.setItem(KEY_DIARY, JSON.stringify(diary));
+            document.getElementById('diary-weight').value = '';
+            document.getElementById('diary-notes').value = '';
+            document.getElementById('diary-photo').value = '';
+            displayDiary();
+        }
+
+        function displayDiary() {
+            const gallery = document.getElementById('diary-gallery');
+            const diary = JSON.parse(localStorage.getItem(KEY_DIARY)) || [];
+            gallery.innerHTML = diary.map(e => `
+                <div class="exercise-card">
+                    <h4 style="color:var(--sage);">${new Date(e.month + "-02").toLocaleDateString(undefined, {month:'long', year:'numeric'})}</h4>
+                    ${e.image ? `<img src="${e.image}">` : '<div style="height:100px; background:#eee; margin:10px 0; border-radius:10px;"></div>'}
+                    <p><strong>${e.weight || '--'}</strong></p>
+                    <p style="font-size:0.8rem; color:#666;">${e.notes}</p>
+                    <button onclick="deleteDiaryEntry(${e.id})" style="color:red; border:none; background:none; font-size:0.7rem; cursor:pointer;">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        function deleteDiaryEntry(id) {
+            if (confirm("Delete entry?")) {
+                let d = (JSON.parse(localStorage.getItem(KEY_DIARY)) || []).filter(e => e.id !== id);
+                localStorage.setItem(KEY_DIARY, JSON.stringify(d));
+                displayDiary();
+            }
+        }
+
+        const toBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = e => reject(e);
+        });
+
+        // ── INIT ──
+        window.onload = () => {
+            const user = localStorage.getItem('lunaUser');
+            if (!user || localStorage.getItem('luna_logged_in') !== 'true') {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            getExercises();
+
+            const searchInput = document.getElementById('exercise-search');
+            if (searchInput) {
+                searchInput.oninput = (e) => {
+                    const term = e.target.value.toLowerCase();
+                    filteredExercises = allExercises.filter(ex => ex.name.toLowerCase().includes(term));
+                    renderBatch(true);
+                };
+            }
+
+            if (document.getElementById('save-diary-btn')) {
+                document.getElementById('save-diary-btn').onclick = saveDiaryEntry;
+            }
+
+            const customBtn = document.getElementById('add-custom-btn');
+            if (customBtn) {
+                customBtn.onclick = () => {
+                    const n = document.getElementById('custom-name').value;
+                    if (!n) return alert("Enter a name!");
+                    const newEx = { id: 'custom-' + Date.now(), name: n, equipment: document.getElementById('custom-equipment').value, gifUrl: document.getElementById('custom-gif').value };
+                    const c = JSON.parse(localStorage.getItem(KEY_CUSTOM)) || [];
+                    c.push(newEx);
+                    localStorage.setItem(KEY_CUSTOM, JSON.stringify(c));
+                    allExercises.unshift(newEx);
+                    filteredExercises = [...allExercises];
+                    renderBatch(true);
+                    toggleView('all');
+                };
+            }
+
+            const clearBtn = document.getElementById('clear-builder-btn');
+            if (clearBtn) {
+                clearBtn.onclick = () => {
+                    if (confirm("Clear current routine?")) { activeRoutine = []; updateRoutineUI(); }
+                };
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+/* 1. Global Styles */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #F5F5DC; /* Your Cream color */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 2. The Title */
+.logo {
+    color: #8A9A5B; /* Your Sage Green */
+    font-size: 3rem;
+    letter-spacing: 8px;
+    margin-top: 50px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 3. The Image & Pink Glow Effect */
+.image-wrapper {
+    margin: 40px 0;
+    position: relative;
+    padding: 10px;
+    background: white; /* The thin white border */
+    border-radius: 15px;
+    /* The Pink Glow - Adjust the last number (0.6) for brightness */
+    box-shadow: 0 0 40px 15px rgba(250, 218, 221, 0.7); 
+    transition: transform 0.3s ease; /* Makes it pop when hovered */
+}
+
+.image-wrapper:hover {
+    transform: scale(1.02); /* Slight zoom effect */
+}
+
+.image-wrapper img {
+    width: 100%;
+    max-width: 600px;
+    display: block;
+    border-radius: 10px;
+}
+
+/* 4. The Button */
+.cta-btn {
+    background-color: #8A9A5B;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.cta-btn:hover {
+    background-color: #FADADD; /* Changes to Pink on hover! */
+    color: #8A9A5B;
+}
+
+/* 1. Grid Container */
+.workout-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 cards per row */
+    gap: 20px;
+    padding: 40px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* 2. Individual Cards */
+.card {
+    height: 200px;
+    background-color: white;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    border: 2px solid #8A9A5B; /* Sage Green Border */
+    transition: all 0.3s ease;
+}
+
+/* 3. Card Specific Colors/Backgrounds */
+/* You can replace 'lightgray' with image URLs later! */
+.glutes { 
+    background: #fdfcf0; 
+    background-image: url('https://img.freepik.com/free-photo/high-angle-girl-home-exercising_23-2148432912.jpg?t=st=1718551698~exp=1718555298~hmac=f849e24cf29d38343f08a543252fff50684ecf519a99d2c78c842c80b4d1b2bf&w=740'); 
+    background-size: cover;
+    background-position: center;
+}
+.stomach {
+     background: #f0f4f0;
+     background-image: url('https://img.freepik.com/premium-photo/cropped-photo-female-athletic-abdominal-muscles-fitness-workout-with-weights-concept_1279788-622.jpg'); 
+    background-size: cover;
+    background-position: center;
+    
+     }
+.back { 
+    background: #fdf0f1;
+  background-image: url('https://www.nourishmovelove.com/wp-content/uploads/2023/04/back-exercises-for-women-women-flexing-back-muscles-scaled.jpg'); 
+    background-size: cover;
+    background-position: center;
+ }
+.legs {
+     background: #f0f4f4;
+     background-image: url('https://media.istockphoto.com/photos/young-smiling-woman-warming-up-and-stretching-her-legs-picture-id547226992?b=1&k=20&m=547226992&s=170667a&w=0&h=FFRL1I044_7jimSI_sc5-wxE-zlIflI6pIqcJYW7m2g='); 
+    background-size: cover;
+    background-position: center;
+     }
+
+/* 4. Text inside Cards */
+.card h3 {
+    color: #8A9A5B;
+    letter-spacing: 3px;
+    font-size: 1.2rem;
+    z-index: 2;
+}
+
+/* 5. Hover Effect - This makes it feel professional */
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(138, 154, 91, 0.2);
+    background-color: #FADADD; /* Flips to pink on hover */
+}
+
+/* 6. Mobile Responsive - Makes it 1 column on phones */
+@media (max-width: 600px) {
+    .workout-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.card:hover {
+    box-shadow: 0 0 30px 10px rgba(250, 218, 221, 0.9); /* Stronger pink glow on hover */
+    border-color: #FADADD; /* Border turns pink too */
+}
+.exercise-card img {
+    background-color: #f9f9f9; /* Placeholder color while GIF loads */
+    min-height: 200px;
+    display: block;
+}
+
+/* Make the exercise names look like our theme */
+.exercise-info h3 {
+    font-family: 'Serif', Georgia, serif;
+    color: #8A9A5B;
+    margin-bottom: 5px;
+}

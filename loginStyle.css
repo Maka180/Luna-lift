@@ -1,0 +1,123 @@
+:root {
+    --sage: #8A9A5B;
+    --pink: #FFB6C1;
+    --cream: #FAF9F6;
+}
+
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1a1a; /* Dark night sky */
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+}
+
+/* BACKGROUND ANIMATION */
+.animated-bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    animation: move 15s infinite alternate;
+}
+
+.orb-1 {
+    width: 400px;
+    height: 400px;
+    background: var(--sage);
+    top: -100px;
+    left: -100px;
+    opacity: 0.5;
+}
+
+.orb-2 {
+    width: 300px;
+    height: 300px;
+    background: var(--pink);
+    bottom: -50px;
+    right: -50px;
+    opacity: 0.4;
+    animation-duration: 20s;
+}
+
+@keyframes move {
+    from { transform: translate(0, 0); }
+    to { transform: translate(100px, 150px); }
+}
+
+/* GLASS CARD */
+.login-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 40px;
+    border-radius: 30px;
+    width: 350px;
+    text-align: center;
+    box-shadow: 0 25px 45px rgba(0,0,0,0.2);
+    animation: fadeIn 1.5s ease;
+}
+
+.logo { color: var(--cream); font-family: serif; letter-spacing: 5px; margin-bottom: 5px; }
+.subtitle { color: var(--pink); font-size: 0.9rem; margin-bottom: 30px; }
+
+/* ANIMATED INPUTS */
+.input-group { position: relative; margin-bottom: 25px; }
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+    color: white;
+    outline: none;
+    transition: 0.3s;
+}
+
+.input-group label {
+    position: absolute;
+    left: 10px;
+    top: 12px;
+    color: rgba(255,255,255,0.5);
+    pointer-events: none;
+    transition: 0.3s;
+}
+
+/* The "Floating Label" Effect */
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+    top: -15px;
+    font-size: 0.75rem;
+    color: var(--pink);
+}
+
+.input-group input:focus { border-bottom: 2px solid var(--pink); }
+
+.login-btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 50px;
+    border: none;
+    background: var(--sage);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.4s;
+}
+
+.login-btn:hover { background: var(--pink); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(255, 182, 193, 0.4); }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

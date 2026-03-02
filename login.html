@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna Lift | Login</title>
+    <style>
+        :root { --sage: #8A9A5B; --pink: #FADADD; --dark-bg: #1a1a1a; --light-bg: #FAF9F6; }
+        body { margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--dark-bg); transition: background 0.6s ease; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        
+        /* Lamp CSS */
+        .lamp-container { position: absolute; top: 0; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 20; }
+        .wire { width: 2px; height: 120px; background: #333; }
+        .lamp-shade { width: 70px; height: 45px; background: #444; clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%); transition: 0.3s; }
+        .pull-string { width: 3px; height: 40px; background: #555; position: relative; }
+        .pull-string::after { content: ''; position: absolute; bottom: -5px; left: -4px; width: 12px; height: 12px; background: gold; border-radius: 50%; }
+        
+        body.lamp-on { background: var(--light-bg); }
+        body.lamp-on .lamp-shade { background: var(--pink); box-shadow: 0 10px 40px var(--pink); }
+        body.lamp-on .login-card { background: white; border: 2px solid var(--sage); box-shadow: 0 20px 50px rgba(0,0,0,0.1); color: #4A4A4A; }
+        body.lamp-on h2 { color: var(--sage); }
+        body.lamp-on input { background: white; border: 1px solid #ddd; color: #333; }
+
+        /* Card CSS */
+        .login-card { background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 30px; width: 320px; text-align: center; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); color: white; transition: 0.5s ease; }
+        h2 { font-family: serif; margin-bottom: 25px; letter-spacing: 2px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #444; background: rgba(0,0,0,0.3); color: white; box-sizing: border-box; outline: none; }
+        .btn-main { width: 100%; padding: 14px; background: var(--sage); color: white; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
+        .toggle-link { margin-top: 20px; font-size: 0.85rem; color: #888; cursor: pointer; text-decoration: underline; }
+        
+        /* Recovery Field Hidden by default */
+        #recovery-box { display: none; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 15px; }
+    </style>
+</head>
+<body id="main-body">
+
+    <div class="lamp-container" onclick="toggleLamp()">
+        <div class="wire"></div><div class="lamp-shade"></div><div class="pull-string"></div>
+    </div>
+
+    <div class="login-card">
+        <h2 id="form-title">LUNA LOGIN</h2>
+        <form id="auth-form">
+            <input type="text" id="username" placeholder="Username" required onfocus="turnOnLamp()">
+            <input type="password" id="password" placeholder="Password" required onfocus="turnOnLamp()">
+            
+            <input type="text" id="recovery-answer" placeholder="Secret Answer (for recovery)" style="display:none;">
+            
+            <button type="submit" id="submit-btn" class="btn-main">Enter Space</button>
+        </form>
+
+        <p class="toggle-link" onclick="toggleAuthMode()" id="toggle-text">New here? Sign Up</p>
+        
+        <div id="recovery-trigger">
+            <p class="toggle-link" style="color: #cc6666; font-size: 0.75rem;" onclick="showRecovery()">Forgot Password?</p>
+        </div>
+
+        <div id="recovery-box">
+            <p style="font-size: 0.8rem; color: #666;">Enter your Secret Answer to set a new password:</p>
+            <input type="text" id="check-answer" placeholder="Your Secret Answer">
+            <input type="password" id="new-password" placeholder="New Password">
+            <button onclick="processRecovery()" class="btn-main" style="background: var(--pink); color: #4A4A4A;">Update Password</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleLamp() { document.body.classList.toggle('lamp-on'); }
+        function turnOnLamp() { document.body.classList.add('lamp-on'); }
+        
+        let isSignUpMode = false;
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById('form-title').innerText = isSignUpMode ? "LUNA SIGN UP" : "LUNA LOGIN";
+            document.getElementById('submit-btn').innerText = isSignUpMode ? "Create Account" : "Enter Space";
+            document.getElementById('toggle-text').innerText = isSignUpMode ? "Already have an account? Login" : "New here? Sign Up";
+            document.getElementById('recovery-answer').style.display = isSignUpMode ? "block" : "none";
+            document.getElementById('recovery-box').style.display = "none";
+        }
+
+        function showRecovery() {
+            document.getElementById('recovery-box').style.display = "block";
+            turnOnLamp();
+        }
+
+        // RECOVERY LOGIC (NO DATA LOSS)
+       function processRecovery() {
+            const user = document.getElementById('username').value.trim();
+            const ans = document.getElementById('check-answer').value.trim();
+            const newPass = document.getElementById('new-password').value.trim();
+            
+            if (!user || !ans || !newPass) return alert("Please fill in all recovery fields!");
+
+            let users = JSON.parse(localStorage.getItem('luna_users')) || {};
+            let recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
+
+            if (recoveries[user] && recoveries[user].toLowerCase() === ans.toLowerCase()) {
+                users[user] = newPass; 
+                localStorage.setItem('luna_users', JSON.stringify(users));
+                
+                // THE FIX: Automatically log them in after recovery so they don't have to re-type
+                localStorage.setItem('luna_logged_in', 'true');
+                localStorage.setItem('lunaUser', user);
+                
+                alert("Password updated! Heading to your space... ✨");
+                window.location.href = 'index.html'; // Go straight to welcome page
+            } else {
+                alert("Incorrect answer or username. 🌙");
+            }
+        }
+
+        document.getElementById('auth-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            const ans = document.getElementById('recovery-answer').value.trim();
+            
+            let users = JSON.parse(localStorage.getItem('luna_users')) || {};
+            let recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
+
+            if (isSignUpMode) {
+                if (users[user]) return alert("Username exists!");
+                if (!ans) return alert("Please provide a secret answer for recovery!");
+                
+                users[user] = pass;
+                recoveries[user] = ans; // Store recovery answer
+                
+                localStorage.setItem('luna_users', JSON.stringify(users));
+                localStorage.setItem('luna_recoveries', JSON.stringify(recoveries));
+                
+                alert("Account created! Remember your secret answer. 💪");
+                toggleAuthMode();
+            } else {
+                if (users[user] && users[user] === pass) {
+                    localStorage.setItem('luna_logged_in', 'true');
+                    localStorage.setItem('lunaUser', user);
+                    window.location.href = 'index.html'; 
+                } else {
+                    alert("Wrong details! 🌙");
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+    
