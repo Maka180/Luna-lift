@@ -8,7 +8,6 @@
         :root { --sage: #8A9A5B; --pink: #FADADD; --dark-bg: #1a1a1a; --light-bg: #FAF9F6; }
         body { margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--dark-bg); transition: background 0.6s ease; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         
-        /* Lamp CSS */
         .lamp-container { position: absolute; top: 0; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 20; }
         .wire { width: 2px; height: 120px; background: #333; }
         .lamp-shade { width: 70px; height: 45px; background: #444; clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%); transition: 0.3s; }
@@ -21,158 +20,212 @@
         body.lamp-on h2 { color: var(--sage); }
         body.lamp-on input { background: white; border: 1px solid #ddd; color: #333; }
 
-        /* Card CSS */
-        .login-card { background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 30px; width: 320px; text-align: center; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); color: white; transition: 0.5s ease; }
+        .login-card { background: rgba(255,255,255,0.05); padding: 40px; border-radius: 30px; width: 320px; text-align: center; z-index: 10; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); color: white; transition: 0.5s ease; }
         h2 { font-family: serif; margin-bottom: 25px; letter-spacing: 2px; }
         input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #444; background: rgba(0,0,0,0.3); color: white; box-sizing: border-box; outline: none; }
         .btn-main { width: 100%; padding: 14px; background: var(--sage); color: white; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
         .toggle-link { margin-top: 20px; font-size: 0.85rem; color: #888; cursor: pointer; text-decoration: underline; }
-        
-        /* Recovery Field Hidden by default */
         #recovery-box { display: none; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 15px; }
+        #remember-box { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; justify-content: flex-start; }
+        .error-msg { color: #ff6b6b; font-size: 0.8rem; margin-top: 5px; display: none; }
+        .loading { opacity: 0.7; pointer-events: none; }
     </style>
 </head>
 <body id="main-body">
 
     <div class="lamp-container" onclick="toggleLamp()">
-        <div class="wire"></div><div class="lamp-shade"></div><div class="pull-string"></div>
+        <div class="wire"></div>
+        <div class="lamp-shade"></div>
+        <div class="pull-string"></div>
     </div>
 
     <div class="login-card">
         <h2 id="form-title">LUNA LOGIN</h2>
+        
+        <div id="error-message" class="error-msg"></div>
+
         <form id="auth-form">
             <input type="text" id="username" placeholder="Username" required onfocus="turnOnLamp()">
+            <input type="email" id="email" placeholder="Email" required onfocus="turnOnLamp()" style="display:none;">
             <input type="password" id="password" placeholder="Password" required onfocus="turnOnLamp()">
-            
-            <input type="text" id="recovery-answer" placeholder="Secret Answer (for recovery)" style="display:none;">
-            <div id="remember-box" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; justify-content: flex-start;">
-    <input type="checkbox" id="remember-me" style="width: auto; margin: 0; accent-color: var(--sage);">
-    <label for="remember-me" style="font-size: 0.85rem; color: #888; cursor: pointer;">Remember me</label>
-</div>
+
+            <div id="remember-box">
+                <input type="checkbox" id="remember-me" style="width:auto; margin:0; accent-color: var(--sage);">
+                <label for="remember-me" style="font-size:0.85rem; color:#888; cursor:pointer;">Remember me</label>
+            </div>
 
             <button type="submit" id="submit-btn" class="btn-main">Enter Space</button>
         </form>
 
         <p class="toggle-link" onclick="toggleAuthMode()" id="toggle-text">New here? Sign Up</p>
-        
+
         <div id="recovery-trigger">
-            <p class="toggle-link" style="color: #cc6666; font-size: 0.75rem;" onclick="showRecovery()">Forgot Password?</p>
+            <p class="toggle-link" style="color:#cc6666; font-size:0.75rem;" onclick="showRecovery()">Forgot Password?</p>
         </div>
 
         <div id="recovery-box">
-            <p style="font-size: 0.8rem; color: #666;">Enter your Secret Answer to set a new password:</p>
-            <input type="text" id="check-answer" placeholder="Your Secret Answer">
-            <input type="password" id="new-password" placeholder="New Password">
-            <button onclick="processRecovery()" class="btn-main" style="background: var(--pink); color: #4A4A4A;">Update Password</button>
+            <p style="font-size:0.8rem; color:#666;">Enter your email to reset your password:</p>
+            <input type="email" id="reset-email" placeholder="Your Email">
+            <button onclick="processRecovery()" class="btn-main" style="background:var(--pink); color:#4A4A4A;">Send Reset Email</button>
         </div>
     </div>
 
-    <script>
-        function toggleLamp() { document.body.classList.toggle('lamp-on'); }
-function turnOnLamp() { document.body.classList.add('lamp-on'); }
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-let isSignUpMode = false;
+        const firebaseConfig = {
+            apiKey: "AIzaSyBxaLFmVKDqK9sHITuZHynj5OyhKgqYzqI",
+            authDomain: "luna-lift.firebaseapp.com",
+            projectId: "luna-lift",
+            storageBucket: "luna-lift.firebasestorage.app",
+            messagingSenderId: "46923748714",
+            appId: "1:46923748714:web:da78b53eb572d217484113"
+        };
 
-function toggleAuthMode() {
-    isSignUpMode = !isSignUpMode;
-    document.getElementById('form-title').innerText = isSignUpMode ? "LUNA SIGN UP" : "LUNA LOGIN";
-    document.getElementById('submit-btn').innerText = isSignUpMode ? "Create Account" : "Enter Space";
-    document.getElementById('toggle-text').innerText = isSignUpMode ? "Already have an account? Login" : "New here? Sign Up";
-    document.getElementById('recovery-answer').style.display = isSignUpMode ? "block" : "none";
-    document.getElementById('recovery-box').style.display = "none";
-    document.getElementById('remember-box').style.display = isSignUpMode ? "none" : "flex";
-}
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
 
-function showRecovery() {
-    document.getElementById('recovery-box').style.display = "block";
-    turnOnLamp();
-}
-
-function processRecovery() {
-    const user = document.getElementById('username').value.trim();
-    const ans = document.getElementById('check-answer').value.trim();
-    const newPass = document.getElementById('new-password').value.trim();
-    if (!user || !ans || !newPass) return alert("Please fill in all recovery fields!");
-
-    let users = JSON.parse(localStorage.getItem('luna_users')) || {};
-    let recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
-
-    if (recoveries[user] && recoveries[user].toLowerCase() === ans.toLowerCase()) {
-        users[user] = newPass;
-        localStorage.setItem('luna_users', JSON.stringify(users));
-        localStorage.setItem('luna_logged_in', 'true');
-        localStorage.setItem('lunaUser', user);
-        alert("Password updated! Heading to your space... ✨");
-        window.location.href = 'index.html';
-    } else {
-        alert("Incorrect answer or username. 🌙");
-    }
-}
-
-document.getElementById('auth-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const user = document.getElementById('username').value.trim();
-    const pass = document.getElementById('password').value.trim();
-    const ans = document.getElementById('recovery-answer').value.trim();
-    const remember = document.getElementById('remember-me').checked;
-
-    let users = {};
-    try {
-        users = JSON.parse(localStorage.getItem('luna_users')) || {};
-    } catch { users = {}; }
-
-    let recoveries = {};
-    try {
-        recoveries = JSON.parse(localStorage.getItem('luna_recoveries')) || {};
-    } catch { recoveries = {}; }
-
-    if (isSignUpMode) {
-        if (!user || !pass) return alert("Please fill in all fields!");
-        if (users[user]) return alert("Username already taken! ✨");
-        if (!ans) return alert("Please provide a secret answer for recovery!");
-
-        users[user] = pass;
-        recoveries[user] = ans;
-        localStorage.setItem('luna_users', JSON.stringify(users));
-        localStorage.setItem('luna_recoveries', JSON.stringify(recoveries));
-
-        alert("Account created! Now please login. 💪");
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
-        document.getElementById('recovery-answer').value = '';
-        toggleAuthMode();
-    } else {
-        if (!users[user]) return alert("Username not found. 🌙");
-        if (users[user] !== pass) return alert("Wrong password. 🌙");
-
-        localStorage.setItem('luna_logged_in', 'true');
-        localStorage.setItem('lunaUser', user);
-
-        // Remember Me — save credentials
-        if (remember) {
-            localStorage.setItem('luna_remembered_user', user);
-            localStorage.setItem('luna_remembered_pass', pass);
-        } else {
-            localStorage.removeItem('luna_remembered_user');
-            localStorage.removeItem('luna_remembered_pass');
+        // ── HELPERS ──
+        function showError(msg) {
+            const el = document.getElementById('error-message');
+            el.innerText = msg;
+            el.style.display = 'block';
         }
 
-        window.location.href = 'index.html';
-    }
-});
+        function clearError() {
+            const el = document.getElementById('error-message');
+            el.innerText = '';
+            el.style.display = 'none';
+        }
 
-// Auto-fill remembered credentials on page load
-window.addEventListener('DOMContentLoaded', () => {
-    const rememberedUser = localStorage.getItem('luna_remembered_user');
-    const rememberedPass = localStorage.getItem('luna_remembered_pass');
-    if (rememberedUser && rememberedPass) {
-        document.getElementById('username').value = rememberedUser;
-        document.getElementById('password').value = rememberedPass;
-        document.getElementById('remember-me').checked = true;
-        turnOnLamp();
-    }
-});
+        function setLoading(on) {
+            document.getElementById('submit-btn').classList.toggle('loading', on);
+            document.getElementById('submit-btn').innerText = on ? 'Please wait...' : (isSignUpMode ? 'Create Account' : 'Enter Space');
+        }
+
+        // ── LAMP ──
+        window.toggleLamp = () => document.body.classList.toggle('lamp-on');
+        window.turnOnLamp = () => document.body.classList.add('lamp-on');
+
+        // ── AUTH MODE TOGGLE ──
+        let isSignUpMode = false;
+
+        window.toggleAuthMode = () => {
+            isSignUpMode = !isSignUpMode;
+            clearError();
+            document.getElementById('form-title').innerText = isSignUpMode ? "LUNA SIGN UP" : "LUNA LOGIN";
+            document.getElementById('submit-btn').innerText = isSignUpMode ? "Create Account" : "Enter Space";
+            document.getElementById('toggle-text').innerText = isSignUpMode ? "Already have an account? Login" : "New here? Sign Up";
+            document.getElementById('email').style.display = isSignUpMode ? "block" : "none";
+            document.getElementById('remember-box').style.display = isSignUpMode ? "none" : "flex";
+            document.getElementById('recovery-box').style.display = "none";
+            document.getElementById('recovery-trigger').style.display = isSignUpMode ? "none" : "block";
+        };
+
+        // ── FORGOT PASSWORD ──
+        window.showRecovery = () => {
+            document.getElementById('recovery-box').style.display = "block";
+            turnOnLamp();
+        };
+
+        window.processRecovery = async () => {
+            const email = document.getElementById('reset-email').value.trim();
+            if (!email) return showError("Please enter your email!");
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert("Password reset email sent! Check your inbox. 🌙");
+                document.getElementById('recovery-box').style.display = "none";
+            } catch (err) {
+                showError("Could not send reset email. Check the address.");
+            }
+        };
+
+        // ── FORM SUBMIT ──
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearError();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const remember = document.getElementById('remember-me').checked;
+
+            if (!username || !password) return showError("Please fill in all fields!");
+
+            // We use username@lunalift.app as internal email format
+            const email = isSignUpMode
+                ? document.getElementById('email').value.trim()
+                : `${username.toLowerCase().replace(/\s+/g, '')}@lunalift.app`;
+
+            setLoading(true);
+
+            try {
+                if (isSignUpMode) {
+                    const signupEmail = document.getElementById('email').value.trim();
+                    if (!signupEmail) { setLoading(false); return showError("Please enter your email!"); }
+
+                    const userCredential = await createUserWithEmailAndPassword(auth, signupEmail, password);
+                    await updateProfile(userCredential.user, { displayName: username });
+
+                    // Save username → email mapping so login by username works
+                    localStorage.setItem(`luna_email_${username.toLowerCase()}`, signupEmail);
+
+                    localStorage.setItem('luna_logged_in', 'true');
+                    localStorage.setItem('lunaUser', username);
+                    window.location.href = 'index.html';
+
+                } else {
+                    // Look up email from username
+                    let loginEmail = localStorage.getItem(`luna_email_${username.toLowerCase()}`);
+
+                    // Fallback for old accounts using the internal email format
+                    if (!loginEmail) {
+                        loginEmail = `${username.toLowerCase().replace(/\s+/g, '')}@lunalift.app`;
+                    }
+
+                    const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
+                    const displayName = userCredential.user.displayName || username;
+
+                    localStorage.setItem('luna_logged_in', 'true');
+                    localStorage.setItem('lunaUser', displayName);
+
+                    if (remember) {
+                        localStorage.setItem('luna_remembered_user', username);
+                        localStorage.setItem('luna_remembered_pass', password);
+                    } else {
+                        localStorage.removeItem('luna_remembered_user');
+                        localStorage.removeItem('luna_remembered_pass');
+                    }
+
+                    window.location.href = 'index.html';
+                }
+            } catch (err) {
+                setLoading(false);
+                console.error(err.code);
+                switch(err.code) {
+                    case 'auth/email-already-in-use': showError("Email already registered!"); break;
+                    case 'auth/invalid-email': showError("Invalid email address!"); break;
+                    case 'auth/weak-password': showError("Password must be at least 6 characters!"); break;
+                    case 'auth/user-not-found': showError("Username not found. Sign up first!"); break;
+                    case 'auth/wrong-password': showError("Wrong password. Try again!"); break;
+                    case 'auth/invalid-credential': showError("Wrong username or password. 🌙"); break;
+                    default: showError("Something went wrong. Please try again.");
+                }
+            }
+        });
+
+        // ── AUTO FILL REMEMBERED USER ──
+        window.addEventListener('DOMContentLoaded', () => {
+            const rememberedUser = localStorage.getItem('luna_remembered_user');
+            const rememberedPass = localStorage.getItem('luna_remembered_pass');
+            if (rememberedUser && rememberedPass) {
+                document.getElementById('username').value = rememberedUser;
+                document.getElementById('password').value = rememberedPass;
+                document.getElementById('remember-me').checked = true;
+                turnOnLamp();
+            }
+        });
+
     </script>
 </body>
 </html>
-    
