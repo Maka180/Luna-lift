@@ -44,19 +44,20 @@
         
         <div id="error-message" class="error-msg"></div>
 
-        <form id="auth-form">
-            <input type="text" id="username" placeholder="Username" required onfocus="turnOnLamp()">
-            <input type="email" id="email" placeholder="Email"  onfocus="turnOnLamp()" style="display:none;">
-            <input type="password" id="password" placeholder="Password" required onfocus="turnOnLamp()">
+       <form id="auth-form">
+    <input type="text" id="username" placeholder="Username" required onfocus="turnOnLamp()">
+    <input type="password" id="password" placeholder="Password" required onfocus="turnOnLamp()">
 
-            <div id="remember-box">
-                <input type="checkbox" id="remember-me" style="width:auto; margin:0; accent-color: var(--sage);">
-                <label for="remember-me" style="font-size:0.85rem; color:#888; cursor:pointer;">Remember me</label>
-            </div>
+    <div id="remember-box">
+        <input type="checkbox" id="remember-me" style="width:auto; margin:0; accent-color: var(--sage);">
+        <label for="remember-me" style="font-size:0.85rem; color:#888; cursor:pointer;">Remember me</label>
+    </div>
 
-            <button type="submit" id="submit-btn" class="btn-main">Enter Space</button>
-        </form>
+    <button type="submit" id="submit-btn" class="btn-main">Enter Space</button>
+</form>
 
+
+<input type="email" id="email" placeholder="Email" onfocus="turnOnLamp()" style="display:none;">
         <p class="toggle-link" onclick="toggleAuthMode()" id="toggle-text">New here? Sign Up</p>
 
         <div id="recovery-trigger">
